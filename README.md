@@ -2,11 +2,11 @@
 
 CLI tool to download doujins from nhentai.net website.
 
-[Download](https://github.com/devyuji/ndoujin-cli/)
+[Download](https://github.com/devyuji/ndoujin-cli/releases/latest)
 
 ## How to use
 
-- Download the binary from [github](https://github.com/devyuji/ndoujin-cli/releases) for your operating system.
+- Download the binary from [github](https://github.com/devyuji/ndoujin-cli/releases/latest) for your operating system.
 - Open a terminal and go to the place where you downloaded the binary.
 - Run the binary as
 
@@ -40,8 +40,7 @@ CLI tool to download doujins from nhentai.net website.
   ```json
   {
     "cookies": {
-      "<cookies name>": "<cookie value>",
-        ...
+      "<cookies name>": "<cookie value>"
     },
     "user-agent": "<YOUR USER AGENT>"
   }
