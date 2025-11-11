@@ -72,13 +72,25 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 		fileName := urlSplit[length-1]
 		fileName = strings.Replace(fileName, "t", "", 1)
 
-		i := fmt.Sprintf("%s/%s/%s", imageBaseUrl, id, fileName)
+		i := fmt.Sprintf("%s/%s/%s", imageBaseUrl, id, fixFile(fileName))
 
 		images.Details = append(images.Details, ImagesDetails{
 			Url:      i,
-			FileName: fileName,
+			FileName: fixFile(fileName),
 		})
 	}
 
 	return images, nil
+}
+
+func fixFile(input string) string {
+	parts := strings.Split(input, ".")
+
+	if len(parts) < 3 {
+		return input
+	}
+
+	filename := strings.Join(parts[:len(parts)-1], ".")
+
+	return filename
 }

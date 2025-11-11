@@ -20,7 +20,8 @@ CLI tool to download doujins from nhentai.net website.
 
   ```json
   {
-    "path": "<download location>"
+    "path": "<download location>",
+    "user-agent": "<YOUR USER AGENT>"
   }
   ```
 

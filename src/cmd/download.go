@@ -99,6 +99,7 @@ func start(code string, path string) {
 
 	var images nhentai.Image
 
+	fmt.Println("Fetching images...")
 	images, err := nhentai.GetImages(code, false)
 
 	if err != nil {
