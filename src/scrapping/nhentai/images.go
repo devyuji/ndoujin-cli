@@ -32,7 +32,7 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 
 	headers := map[string]string{
 		"User-Agent": config.USERAGENT,
-		"Cookies":    config.COOKIE,
+		"cookie":     config.COOKIE,
 	}
 
 	for key, value := range headers {
@@ -43,7 +43,7 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 	res, err := httpClient.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
-		return images, fmt.Errorf("unablet to access website\nif the website is using cloudflare then add cookies in cookies.json file")
+		return images, fmt.Errorf("unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
 	}
 	defer res.Body.Close()
 

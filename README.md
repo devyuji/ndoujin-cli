@@ -49,4 +49,4 @@ CLI tool to download doujins from nhentai.net website.
 
   You can get the user-agent from your browser just search `"what is my user agent"` and paste it on config.json file.
 
-  **_Just make sure the cookies and user agent are from the same browser only._**
+  **_[IMPORTANT] Just make sure the cookies and user agent are from the same browser only._**

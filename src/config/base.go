@@ -37,7 +37,7 @@ func init() {
 	err = json.Unmarshal(data, &config)
 
 	if err != nil {
-		fmt.Println("error reading config.json file")
+		fmt.Println("error reading config.json file -", err)
 		return
 	}
 
@@ -49,4 +49,6 @@ func init() {
 
 		COOKIE += val
 	}
+
+	fmt.Println(COOKIE)
 }

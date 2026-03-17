@@ -48,6 +48,7 @@ func codeCmd(c *cobra.Command, args []string) {
 		path = config.DOWNLOADPATH
 	}
 
+	// look for code.txt file if no code or url is present
 	if len(args) < 1 {
 		_, err := os.Stat("code.txt")
 

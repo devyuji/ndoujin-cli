@@ -22,7 +22,7 @@ func DownloadImage(url string, folderDir string, fileName string) {
 
 	headers := map[string]string{
 		"User-Agent": config.USERAGENT,
-		"Cookies":    config.COOKIE,
+		"Cookie":     config.COOKIE,
 	}
 
 	for key, value := range headers {
