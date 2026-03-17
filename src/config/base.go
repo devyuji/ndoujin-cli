@@ -50,5 +50,4 @@ func init() {
 		COOKIE += val
 	}
 
-	fmt.Println(COOKIE)
 }
