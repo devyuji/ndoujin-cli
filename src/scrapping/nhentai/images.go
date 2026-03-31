@@ -45,6 +45,7 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 	if err != nil || res.StatusCode != 200 {
 		return images, fmt.Errorf("unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
 	}
+
 	defer res.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -56,7 +57,7 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 	var thumbImages []string
 
 	doc.Find("#thumbnail-container").Find(".thumb-container").Each(func(i int, s *goquery.Selection) {
-		src, exists := s.Find("img").Attr("data-src")
+		src, exists := s.Find("img").Attr("src")
 
 		if exists {
 			thumbImages = append(thumbImages, src)

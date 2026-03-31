@@ -100,12 +100,14 @@ func start(code string, path string) {
 
 	var images nhentai.Image
 
-	fmt.Println("Fetching images...")
+	fmt.Printf("Fetching images for %s...\n", code)
 	images, err := nhentai.GetImages(code, false)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Printf("Total images fount: %d\n", len(images.Details))
 
 	downloadPath := filepath.Join(path, code)
 
@@ -126,18 +128,15 @@ func start(code string, path string) {
 	for _, detail := range images.Details {
 		limiter <- 1
 
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			utils.DownloadImage(detail.Url, downloadPath, detail.FileName)
 
 			<-limiter
-		}()
+		})
 	}
 
 	wg.Wait()
 
-	fmt.Println("Download completed")
+	fmt.Println("Download completed.")
 }
