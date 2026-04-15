@@ -15,7 +15,7 @@ func DownloadImage(url string, folderDir string, fileName string) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
 	if err != nil {
-		fmt.Println("url is invalid")
+		fmt.Println("invalid url")
 
 		return
 	}
@@ -45,7 +45,7 @@ func DownloadImage(url string, folderDir string, fileName string) {
 	file, err := os.Create(filePath)
 
 	if err != nil {
-		fmt.Println("failed to create file: %w", err)
+		fmt.Println("failed to create file:", err)
 		return
 	}
 
@@ -54,7 +54,7 @@ func DownloadImage(url string, folderDir string, fileName string) {
 	_, err = io.Copy(file, res.Body)
 
 	if err != nil {
-		fmt.Println("failed to save image: %w", err)
+		fmt.Println("failed to save image:", err)
 
 		return
 	}

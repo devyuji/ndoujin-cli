@@ -6,12 +6,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/devyuji/ndoujin-cli/src/config"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
+	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
+	"github.com/devyuji/ndoujin-cli/src/types"
 	"github.com/devyuji/ndoujin-cli/src/utils"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +34,10 @@ func init() {
 func isURL(s string) bool {
 	u, err := url.Parse(s)
 	return err == nil && u.Scheme != "" && u.Host != ""
+}
+
+type img interface {
+	Get() (types.Image, error)
 }
 
 func codeCmd(c *cobra.Command, args []string) {
@@ -71,7 +76,7 @@ func codeCmd(c *cobra.Command, args []string) {
 				}
 
 				c := string(buffer[:bytesRead])
-				for _, i := range strings.Fields(c) {
+				for i := range strings.FieldsSeq(c) {
 					start(i, path)
 				}
 			}
@@ -83,32 +88,69 @@ func codeCmd(c *cobra.Command, args []string) {
 
 	u := args[0]
 
-	var code string = u
-
-	if isURL(u) {
-		re := regexp.MustCompile(`/g/(\d+)`)
-		match := re.FindStringSubmatch(u)
-		if len(match) > 1 {
-			code = match[1]
-		}
-	}
-
-	start(code, path)
+	start(u, path)
 }
 
-func start(code string, path string) {
+func start(uri string, path string) {
+	var hostName string
+	var code string
+	var images types.Image
+	var err error
 
-	var images nhentai.Image
+	if !isURL(uri) {
+		fmt.Println("invalid url")
+		return
+	}
 
-	fmt.Printf("Fetching images for %s...\n", code)
-	images, err := nhentai.GetImages(code, false)
+	parseUrl, err := url.Parse(uri)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Total images fount: %d\n", len(images.Details))
+	hostName = parseUrl.Host
 
+	fmt.Printf("Fetching images for %s...\n", uri)
+
+	switch hostName {
+	case "nhentai.net":
+		code, err = nhentai.GetCode(uri)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c := nhentai.Call{
+			Url: uri,
+		}
+
+		images, err = img.Get(c)
+
+	case "nhentai.xxx":
+		code, err = nhentai.GetCode(uri)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c := nhentaixxx.Call{
+			Url: uri,
+		}
+
+		images, err = img.Get(c)
+
+	default:
+		log.Fatal("url.not.supported")
+	}
+
+	if len(images.Details) < 1 {
+		fmt.Println("No images found. :-(")
+		return
+	}
+
+	fmt.Printf("Total images found: %d\n", len(images.Details))
+
+	// ------------------ create folder for download ------------------------
 	downloadPath := filepath.Join(path, code)
 
 	_, err = os.Stat(code)
@@ -121,6 +163,7 @@ func start(code string, path string) {
 		}
 	}
 
+	// ------------------ downloading start here -------------------------
 	limiter := make(chan int, 10)
 	var wg sync.WaitGroup
 
@@ -129,7 +172,6 @@ func start(code string, path string) {
 		limiter <- 1
 
 		wg.Go(func() {
-
 			utils.DownloadImage(detail.Url, downloadPath, detail.FileName)
 
 			<-limiter

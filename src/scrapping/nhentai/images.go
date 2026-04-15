@@ -2,24 +2,26 @@ package nhentai
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/devyuji/ndoujin-cli/src/config"
+	"github.com/devyuji/ndoujin-cli/src/types"
 )
 
-type ImagesDetails struct {
-	Url      string
-	FileName string
+type Call struct {
+	Url string
 }
 
-type Image struct {
-	Details []ImagesDetails
-}
+func (c Call) Get() (types.Image, error) {
+	var images types.Image
+	code, err := GetCode(c.Url)
 
-func GetImages(code string, saveInformation bool) (Image, error) {
-	var images Image
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	url := fmt.Sprintf("https://nhentai.net/g/%s", code)
 
@@ -75,7 +77,7 @@ func GetImages(code string, saveInformation bool) (Image, error) {
 
 		i := fmt.Sprintf("%s/%s/%s", imageBaseUrl, id, fixFile(fileName))
 
-		images.Details = append(images.Details, ImagesDetails{
+		images.Details = append(images.Details, types.ImagesDetails{
 			Url:      i,
 			FileName: fixFile(fileName),
 		})
