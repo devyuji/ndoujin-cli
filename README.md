@@ -11,7 +11,7 @@ CLI tool to download doujins from nhentai.net website.
 - Run the binary as
 
   ```bash
-  <./ndoujin-cli-*> download <code / url> -p <folder location>
+  <./ndoujin-cli-*> download <url> -p <folder location>
   ```
 
   If you don't specify the -p flag then it will download it in the same folder.
@@ -21,7 +21,8 @@ CLI tool to download doujins from nhentai.net website.
   ```json
   {
     "path": "<download location>",
-    "user-agent": "<YOUR USER AGENT>"
+    "user-agent": "<YOUR USER AGENT>",
+    "cookies": {}
   }
   ```
 
@@ -30,8 +31,8 @@ CLI tool to download doujins from nhentai.net website.
 - To download in bulk Create a `code.txt` file and enter code one line at a time.
 
   ```bash
-    534101
-    533999
+    https://nhentai.net/g/534101
+    https://nhentai.net/g/533999
   ```
 
 ## If the website is using Cloudflare protection or any other then follow this steps
@@ -41,7 +42,7 @@ CLI tool to download doujins from nhentai.net website.
   ```json
   {
     "cookies": {
-      "<cookies name>": "<cookie value>"
+      "<website name>": "<cookie value>"
     },
     "user-agent": "<YOUR USER AGENT>"
   }

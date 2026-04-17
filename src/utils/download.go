@@ -6,11 +6,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/devyuji/ndoujin-cli/src/config"
 )
 
-func DownloadImage(url string, folderDir string, fileName string) {
+func DownloadImage(url string, folderDir string, fileName string, headers map[string]string) {
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
@@ -18,11 +16,6 @@ func DownloadImage(url string, folderDir string, fileName string) {
 		fmt.Println("invalid url")
 
 		return
-	}
-
-	headers := map[string]string{
-		"User-Agent": config.USERAGENT,
-		"Cookie":     config.COOKIE,
 	}
 
 	for key, value := range headers {
@@ -45,17 +38,29 @@ func DownloadImage(url string, folderDir string, fileName string) {
 	file, err := os.Create(filePath)
 
 	if err != nil {
-		fmt.Println("failed to create file:", err)
+		fmt.Println("Failed to create file:", err)
 		return
 	}
-
-	defer file.Close()
 
 	_, err = io.Copy(file, res.Body)
 
 	if err != nil {
-		fmt.Println("failed to save image:", err)
+		fmt.Println("Failed to save image:", err)
 
+		file.Close()
 		return
+	}
+
+	if err = file.Sync(); err != nil {
+		fmt.Println("Failed to save image:", err)
+
+		file.Close()
+		return
+	}
+
+	err = file.Close()
+
+	if err != nil {
+		fmt.Println("Failed to save image: ", err)
 	}
 }

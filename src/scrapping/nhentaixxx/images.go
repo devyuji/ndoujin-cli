@@ -18,7 +18,7 @@ type Call struct {
 	Url string
 }
 
-func (c Call) Get() (types.Image, error) {
+func (c *Call) GetImages() (types.Image, error) {
 	var images types.Image
 	code, err := nhentai.GetCode(c.Url)
 
@@ -36,8 +36,8 @@ func (c Call) Get() (types.Image, error) {
 	}
 
 	headers := map[string]string{
-		"User-Agent": config.USERAGENT,
-		"cookie":     config.COOKIE,
+		"User-Agent": config.Value.UserAgent,
+		"cookie":     config.Value.Cookies.NhentaiXXX,
 	}
 
 	for key, value := range headers {
@@ -107,15 +107,15 @@ func getUrl(code string, pageNumber int) (types.ImagesDetails, error) {
 	}
 
 	headers := map[string]string{
-		"User-Agent": config.USERAGENT,
-		"Cookie":     config.COOKIE,
+		"User-Agent": config.Value.UserAgent,
+		"Cookie":     config.Value.Cookies.NhentaiXXX,
 	}
 
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
 
-	client := http.Client{}
+	client := &http.Client{}
 	res, err := client.Do(req)
 
 	if err != nil || res.StatusCode != 200 {

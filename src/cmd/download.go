@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/devyuji/ndoujin-cli/src/config"
+	"github.com/devyuji/ndoujin-cli/src/scrapping/hitomi"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
 	"github.com/devyuji/ndoujin-cli/src/types"
@@ -28,7 +30,8 @@ var cmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(cmd)
 
-	rootCmd.PersistentFlags().StringP("path", "p", "", "enter download path")
+	rootCmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
+	rootCmd.PersistentFlags().StringP("cookie", "c", "", "Add Cookie")
 }
 
 func isURL(s string) bool {
@@ -36,8 +39,8 @@ func isURL(s string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-type img interface {
-	Get() (types.Image, error)
+type provider interface {
+	GetImages() (types.Image, error)
 }
 
 func codeCmd(c *cobra.Command, args []string) {
@@ -45,12 +48,19 @@ func codeCmd(c *cobra.Command, args []string) {
 	path, err := c.Flags().GetString("path")
 
 	if err != nil {
-		fmt.Println("Wrong flags")
+		fmt.Println("Something went wrong!")
 		return
 	}
 
-	if config.DOWNLOADPATH != "" {
-		path = config.DOWNLOADPATH
+	// cookie, err := c.Flags().GetString("cookie")
+
+	// if err != nil {
+	// 	fmt.Println("Something went wrong!")
+	// 	return
+	// }
+
+	if config.Value.Path != "" {
+		path = config.Value.Path
 	}
 
 	// look for code.txt file if no code or url is present
@@ -93,12 +103,13 @@ func codeCmd(c *cobra.Command, args []string) {
 
 func start(uri string, path string) {
 	var hostName string
-	var code string
-	var images types.Image
-	var err error
+	var folderName string
+	var headers = map[string]string{
+		"User-Agent": config.Value.UserAgent,
+	}
 
 	if !isURL(uri) {
-		fmt.Println("invalid url")
+		fmt.Println("Please Enter Valid URL.")
 		return
 	}
 
@@ -112,35 +123,61 @@ func start(uri string, path string) {
 
 	fmt.Printf("Fetching images for %s...\n", uri)
 
+	var scrapper provider
+
 	switch hostName {
 	case "nhentai.net":
-		code, err = nhentai.GetCode(uri)
+		folderName, err = nhentai.GetCode(uri)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		c := nhentai.Call{
+		scrapper = &nhentai.Call{
 			Url: uri,
 		}
 
-		images, err = img.Get(c)
+		headers["Cookie"] = config.Value.Cookies.Nhentai
 
 	case "nhentai.xxx":
-		code, err = nhentai.GetCode(uri)
+		folderName, err = nhentai.GetCode(uri)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		c := nhentaixxx.Call{
+		scrapper = &nhentaixxx.Call{
 			Url: uri,
 		}
 
-		images, err = img.Get(c)
+		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
+
+	case "hitomi.la":
+		fmt.Println("Under Construction!")
+		folderName = "demo"
+
+		h := map[string]string{
+			"Referer": "https://hitomi.la/",
+			"Cookie":  config.Value.Cookies.Hitomi,
+		}
+
+		maps.Copy(headers, h)
+
+		scrapper = &hitomi.Call{
+			Url:     uri,
+			Headers: headers,
+		}
 
 	default:
-		log.Fatal("url.not.supported")
+		fmt.Println("URL Not Supported.")
+		return
+	}
+
+	images, err := scrapper.GetImages()
+
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	if len(images.Details) < 1 {
@@ -151,9 +188,9 @@ func start(uri string, path string) {
 	fmt.Printf("Total images found: %d\n", len(images.Details))
 
 	// ------------------ create folder for download ------------------------
-	downloadPath := filepath.Join(path, code)
+	downloadPath := filepath.Join(path, folderName)
 
-	_, err = os.Stat(code)
+	_, err = os.Stat(folderName)
 
 	if os.IsNotExist(err) {
 		err = os.Mkdir(downloadPath, 0755)
@@ -167,12 +204,12 @@ func start(uri string, path string) {
 	limiter := make(chan int, 10)
 	var wg sync.WaitGroup
 
-	fmt.Printf("Downloading %s\n", code)
+	fmt.Printf("Downloading %s\n", uri)
 	for _, detail := range images.Details {
 		limiter <- 1
 
 		wg.Go(func() {
-			utils.DownloadImage(detail.Url, downloadPath, detail.FileName)
+			utils.DownloadImage(detail.Url, downloadPath, detail.FileName, headers)
 
 			<-limiter
 		})

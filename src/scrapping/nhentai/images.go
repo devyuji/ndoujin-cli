@@ -15,7 +15,7 @@ type Call struct {
 	Url string
 }
 
-func (c Call) Get() (types.Image, error) {
+func (c *Call) GetImages() (types.Image, error) {
 	var images types.Image
 	code, err := GetCode(c.Url)
 
@@ -33,8 +33,8 @@ func (c Call) Get() (types.Image, error) {
 	}
 
 	headers := map[string]string{
-		"User-Agent": config.USERAGENT,
-		"cookie":     config.COOKIE,
+		"User-Agent": config.Value.UserAgent,
+		"cookie":     config.Value.Cookies.Nhentai,
 	}
 
 	for key, value := range headers {

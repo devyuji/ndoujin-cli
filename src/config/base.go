@@ -7,15 +7,21 @@ import (
 	"os"
 )
 
-var USERAGENT = ""
-var COOKIE = ""
-var DOWNLOADPATH = ""
+const VERSION string = "1.1.0"
+
+type Cookie struct {
+	Nhentai    string `json:"nhentai.net"`
+	NhentaiXXX string `json:"nhentai.xxx"`
+	Hitomi     string `json:"hitomi.la"`
+}
 
 type Config struct {
-	Path      string            `json:"path"`
-	UserAgent string            `json:"user-agent"`
-	Cookies   map[string]string `json:"cookies"`
+	Path      string `json:"path"`
+	UserAgent string `json:"user-agent"`
+	Cookies   Cookie `json:"cookies"`
 }
+
+var Value Config
 
 func init() {
 	file, err := os.Open("config.json")
@@ -32,22 +38,10 @@ func init() {
 		return
 	}
 
-	var config Config
-
-	err = json.Unmarshal(data, &config)
+	err = json.Unmarshal(data, &Value)
 
 	if err != nil {
 		fmt.Println("error reading config.json file -", err)
 		return
 	}
-
-	DOWNLOADPATH = config.Path
-	USERAGENT = config.UserAgent
-
-	for key, value := range config.Cookies {
-		val := fmt.Sprintf("%s=%s; ", key, value)
-
-		COOKIE += val
-	}
-
 }
