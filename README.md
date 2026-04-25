@@ -1,6 +1,6 @@
 # ndoujin-cli
 
-CLI tool to download doujins from nhentai.net website.
+CLI tool to download doujins from [Supported](https://github.com/devyuji/ndoujin-cli/blob/main/supportsite.md) websites.
 
 [Download](https://github.com/devyuji/ndoujin-cli/releases/latest)
 
@@ -22,13 +22,15 @@ CLI tool to download doujins from nhentai.net website.
   {
     "path": "<download location>",
     "user-agent": "<YOUR USER AGENT>",
-    "cookies": {}
+    "cookies": {
+      "<website.name>": <cookie-value>
+    }
   }
   ```
 
-  If you use `-p` flag and also have a `config.json` it will ignore the -p flag.
+  If you use `-p` flag and also have a `config.json` it will ignore the `config.json` path.
 
-- To download in bulk Create a `code.txt` file and enter code one line at a time.
+- To download in bulk Create a `code.txt` file and enter url one line at a time.
 
   ```bash
     https://nhentai.net/g/534101
@@ -48,6 +50,6 @@ CLI tool to download doujins from nhentai.net website.
   }
   ```
 
-  You can get the user-agent from your browser just search `"what is my user agent"` and paste it on config.json file.
+  You can get the user-agent from your browser just by searching `"what is my user agent"` and paste it on config.json file.
 
   **_[IMPORTANT] Just make sure the cookies and user agent are from the same browser only._**

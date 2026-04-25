@@ -7,21 +7,26 @@ import (
 	"os"
 )
 
-const VERSION string = "1.1.0"
+const VERSION string = "v1.1.0"
 
 type Cookie struct {
 	Nhentai    string `json:"nhentai.net"`
 	NhentaiXXX string `json:"nhentai.xxx"`
-	Hitomi     string `json:"hitomi.la"`
 }
 
 type Config struct {
-	Path      string `json:"path"`
-	UserAgent string `json:"user-agent"`
-	Cookies   Cookie `json:"cookies"`
+	Path        string `json:"path"`
+	UserAgent   string `json:"user-agent"`
+	Cookies     Cookie `json:"cookies"`
+	Concurrency int    `json:"concurrency"`
 }
 
-var Value Config
+var Value *Config = &Config{
+	Path:        "",
+	UserAgent:   "",
+	Cookies:     Cookie{},
+	Concurrency: 10,
+}
 
 func init() {
 	file, err := os.Open("config.json")

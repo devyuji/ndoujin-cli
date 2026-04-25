@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func DownloadImage(url string, folderDir string, fileName string, headers map[string]string) {
@@ -13,8 +14,7 @@ func DownloadImage(url string, folderDir string, fileName string, headers map[st
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
 	if err != nil {
-		fmt.Println("invalid url")
-
+		fmt.Println("Invalid URL")
 		return
 	}
 
@@ -22,13 +22,16 @@ func DownloadImage(url string, folderDir string, fileName string, headers map[st
 		req.Header.Set(key, value)
 	}
 
-	httpClient := &http.Client{}
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			IdleConnTimeout: time.Minute * 2,
+		},
+	}
 
 	res, err := httpClient.Do(req)
 
 	if err != nil {
-		fmt.Printf("unable to download %s\n", fileName)
-
+		fmt.Printf("Unable to download %s\n", fileName)
 		return
 	}
 

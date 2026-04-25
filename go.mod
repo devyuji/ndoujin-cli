@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/mod v0.35.0
 )
 
 require (

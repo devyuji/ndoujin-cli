@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -11,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/devyuji/ndoujin-cli/src/config"
-	"github.com/devyuji/ndoujin-cli/src/scrapping/hitomi"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
 	"github.com/devyuji/ndoujin-cli/src/types"
@@ -23,15 +21,14 @@ var cmd = &cobra.Command{
 	Use:     "download",
 	Short:   "Download doujin",
 	Long:    "Download doujin",
-	Example: "ndoujin-cli download 533999\nndoujin-cli download https://nhentai.net/g/533999",
+	Example: "ndoujin-cli download https://nhentai.net/g/533999",
 	Run:     codeCmd,
 }
 
 func init() {
-	rootCmd.AddCommand(cmd)
+	cmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
 
-	rootCmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
-	rootCmd.PersistentFlags().StringP("cookie", "c", "", "Add Cookie")
+	rootCmd.AddCommand(cmd)
 }
 
 func isURL(s string) bool {
@@ -52,18 +49,11 @@ func codeCmd(c *cobra.Command, args []string) {
 		return
 	}
 
-	// cookie, err := c.Flags().GetString("cookie")
-
-	// if err != nil {
-	// 	fmt.Println("Something went wrong!")
-	// 	return
-	// }
-
-	if config.Value.Path != "" {
+	if path == "" {
 		path = config.Value.Path
 	}
 
-	// look for code.txt file if no code or url is present
+	//---------------------- look for code.txt file if no url is present -----------------------
 	if len(args) < 1 {
 		_, err := os.Stat("code.txt")
 
@@ -95,6 +85,7 @@ func codeCmd(c *cobra.Command, args []string) {
 		}
 
 	}
+	//---------------------- look for code.txt file if no url is present -----------------------
 
 	u := args[0]
 
@@ -133,11 +124,12 @@ func start(uri string, path string) {
 			log.Fatal(err)
 		}
 
-		scrapper = &nhentai.Call{
-			Url: uri,
-		}
-
 		headers["Cookie"] = config.Value.Cookies.Nhentai
+
+		scrapper = &nhentai.Call{
+			Url:     uri,
+			Headers: headers,
+		}
 
 	case "nhentai.xxx":
 		folderName, err = nhentai.GetCode(uri)
@@ -146,24 +138,9 @@ func start(uri string, path string) {
 			log.Fatal(err)
 		}
 
-		scrapper = &nhentaixxx.Call{
-			Url: uri,
-		}
-
 		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
 
-	case "hitomi.la":
-		fmt.Println("Under Construction!")
-		folderName = "demo"
-
-		h := map[string]string{
-			"Referer": "https://hitomi.la/",
-			"Cookie":  config.Value.Cookies.Hitomi,
-		}
-
-		maps.Copy(headers, h)
-
-		scrapper = &hitomi.Call{
+		scrapper = &nhentaixxx.Call{
 			Url:     uri,
 			Headers: headers,
 		}
@@ -187,7 +164,7 @@ func start(uri string, path string) {
 
 	fmt.Printf("Total images found: %d\n", len(images.Details))
 
-	// ------------------ create folder for download ------------------------
+	// ------------------ creating folder  ------------------------
 	downloadPath := filepath.Join(path, folderName)
 
 	_, err = os.Stat(folderName)
@@ -199,9 +176,10 @@ func start(uri string, path string) {
 			log.Fatal(err)
 		}
 	}
+	// ------------------ creating folder ------------------------
 
-	// ------------------ downloading start here -------------------------
-	limiter := make(chan int, 10)
+	// ------------------ downloading images -------------------------
+	limiter := make(chan int, config.Value.Concurrency)
 	var wg sync.WaitGroup
 
 	fmt.Printf("Downloading %s\n", uri)

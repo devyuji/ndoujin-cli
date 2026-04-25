@@ -9,13 +9,13 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/devyuji/ndoujin-cli/src/config"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/types"
 )
 
 type Call struct {
-	Url string
+	Url     string
+	Headers map[string]string
 }
 
 func (c *Call) GetImages() (types.Image, error) {
@@ -32,15 +32,10 @@ func (c *Call) GetImages() (types.Image, error) {
 
 	if err != nil {
 		fmt.Println(url)
-		return images, fmt.Errorf("url is invalid")
+		return images, fmt.Errorf("Invalid URL")
 	}
 
-	headers := map[string]string{
-		"User-Agent": config.Value.UserAgent,
-		"cookie":     config.Value.Cookies.NhentaiXXX,
-	}
-
-	for key, value := range headers {
+	for key, value := range c.Headers {
 		req.Header.Set(key, value)
 	}
 
@@ -48,7 +43,7 @@ func (c *Call) GetImages() (types.Image, error) {
 	res, err := httpClient.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
-		return images, fmt.Errorf("unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
+		return images, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
 	}
 
 	defer res.Body.Close()
@@ -74,13 +69,12 @@ func (c *Call) GetImages() (types.Image, error) {
 		limiter <- 1
 
 		wg.Go(func() {
-			image, err := getUrl(code, i+1)
+			image, err := getUrl(httpClient, code, c.Headers, i+1)
 
 			if err != nil {
 				fmt.Println("Unable to download image:", image.FileName)
 
 				<-limiter
-				fmt.Println("not working")
 			}
 
 			images.Details = append(images.Details, image)
@@ -95,7 +89,7 @@ func (c *Call) GetImages() (types.Image, error) {
 	return images, nil
 }
 
-func getUrl(code string, pageNumber int) (types.ImagesDetails, error) {
+func getUrl(client *http.Client, code string, headers map[string]string, pageNumber int) (types.ImagesDetails, error) {
 	var imageDetails types.ImagesDetails
 
 	url := fmt.Sprintf("https://nhentai.xxx/g/%s/%d", code, pageNumber)
@@ -106,20 +100,14 @@ func getUrl(code string, pageNumber int) (types.ImagesDetails, error) {
 		return imageDetails, err
 	}
 
-	headers := map[string]string{
-		"User-Agent": config.Value.UserAgent,
-		"Cookie":     config.Value.Cookies.NhentaiXXX,
-	}
-
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
 
-	client := &http.Client{}
 	res, err := client.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
-		return imageDetails, fmt.Errorf("unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
+		return imageDetails, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
 	}
 
 	defer res.Body.Close()
@@ -133,7 +121,7 @@ func getUrl(code string, pageNumber int) (types.ImagesDetails, error) {
 	imageUrl, exisit := doc.Find("#fimg").Attr("data-src")
 
 	if !exisit {
-		return imageDetails, fmt.Errorf("image.not.found")
+		return imageDetails, fmt.Errorf("Image not found")
 	}
 
 	imageDetails.FileName = getFileName(imageUrl)
