@@ -45,7 +45,7 @@ func codeCmd(c *cobra.Command, args []string) {
 	path, err := c.Flags().GetString("path")
 
 	if err != nil {
-		fmt.Println("Something went wrong!")
+		fmt.Println("Unable to get flag path")
 		return
 	}
 
