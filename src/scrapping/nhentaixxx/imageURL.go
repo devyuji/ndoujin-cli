@@ -9,7 +9,7 @@ import (
 	"github.com/devyuji/ndoujin-cli/src/types"
 )
 
-func (c *Call) getURL(client *http.Client, code string, pageNumber int) (types.ImagesDetails, error) {
+func (c *Call) getURL(code string, pageNumber int) (types.ImagesDetails, error) {
 
 	var imageDetails types.ImagesDetails
 
@@ -25,7 +25,7 @@ func (c *Call) getURL(client *http.Client, code string, pageNumber int) (types.I
 		req.Header.Set(key, value)
 	}
 
-	res, err := client.Do(req)
+	res, err := c.Client.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
 		return imageDetails, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)

@@ -3,11 +3,14 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"maps"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/devyuji/ndoujin-cli/src/config"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/doujins"
@@ -28,7 +31,7 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
-	cmd.PersistentFlags().IntP("concurrency", "c", 10, "Set Concurrency download")
+	// cmd.PersistentFlags().IntP("concurrency", "c", 10, "Set Concurrency download")
 
 	rootCmd.AddCommand(cmd)
 }
@@ -51,16 +54,16 @@ func codeCmd(c *cobra.Command, args []string) {
 		return
 	}
 
-	concurrency, err := c.Flags().GetInt("concurrency")
+	// concurrency, err := c.Flags().GetInt("concurrency")
 
-	if err != nil {
-		fmt.Println("Unable to get concurrency flag")
-		return
-	}
+	// if err != nil {
+	// 	fmt.Println("Unable to get concurrency flag")
+	// 	return
+	// }
 
-	if concurrency != config.Value.Concurrency {
-		config.Value.Concurrency = concurrency
-	}
+	// if concurrency != config.Value.Concurrency {
+	// 	config.Value.Concurrency = concurrency
+	// }
 
 	if path == "" {
 		path = config.Value.Path
@@ -128,18 +131,23 @@ func start(uri string, path string) {
 	fmt.Printf("Fetching images for %s...\n", uri)
 
 	var scrapper provider
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 
 	switch hostName {
 	case "nhentai.net":
 		folderName, err = nhentai.GetCode(uri)
 
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			return
 		}
 
 		headers["Cookie"] = config.Value.Cookies.Nhentai
 
 		scrapper = &nhentai.Call{
+			Client:  client,
 			Url:     uri,
 			Headers: headers,
 		}
@@ -148,7 +156,8 @@ func start(uri string, path string) {
 		folderName, err = nhentai.GetCode(uri)
 
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			return
 		}
 
 		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
@@ -159,14 +168,38 @@ func start(uri string, path string) {
 		}
 
 	case "doujins.com":
-		folderName = "doujins-download-trial"
+		h := map[string]string{
+			"Host":            "static.doujins.com",
+			"Accept-Language": "en-US,en;q=0.9",
+			"Sec-GPC":         "1",
+			"Connection":      "keep-alive",
+			"Referer":         "https://doujins.com/",
+			"Sec-Fetch-Dest":  "image",
+			"Sec-Fetch-Mode":  "no-cors",
+			"Sec-Fetch-Site":  "same-site",
+			"DNT":             "1",
+			"Priority":        "u=5, i",
+			"Pragma":          "no-cache",
+			"Cache-Control":   "no-cache",
+			"Cookie":          config.Value.Cookies.Doujins,
+		}
 
-		headers["Cookie"] = config.Value.Cookies.Doujins
+		maps.Copy(headers, h)
+
+		d, b, err := doujins.GetDetails(client, uri, headers)
+
+		if err != nil {
+			fmt.Println("Unable to get details - ", err)
+			return
+		}
+
+		folderName = d["name"].(string)
 
 		scrapper = &doujins.Call{
-			Url:     uri,
-			Headers: headers,
+			Body: b,
 		}
+
+		config.Value.Concurrency = 1
 
 	default:
 		fmt.Println("URL Not Supported.")
@@ -206,11 +239,11 @@ func start(uri string, path string) {
 	var wg sync.WaitGroup
 
 	fmt.Printf("Downloading %s\n", uri)
-	for _, detail := range images.Details {
+	for i, detail := range images.Details {
 		limiter <- 1
 
 		wg.Go(func() {
-			utils.DownloadImage(detail.Url, downloadPath, detail.FileName, headers)
+			utils.DownloadImage(client, detail.Url, downloadPath, i+1, headers)
 
 			<-limiter
 		})

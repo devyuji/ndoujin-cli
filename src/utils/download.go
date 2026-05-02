@@ -6,10 +6,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 )
 
-func DownloadImage(url string, folderDir string, fileName string, headers map[string]string) {
+func DownloadImage(client *http.Client, url string, folderDir string, index int, headers map[string]string) {
+
+	ct := map[string]string{
+		"image/jpeg": "jpg",
+		"image/webp": "webp",
+		"image/png":  "png",
+	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
@@ -22,22 +27,20 @@ func DownloadImage(url string, folderDir string, fileName string, headers map[st
 		req.Header.Set(key, value)
 	}
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			IdleConnTimeout: time.Minute * 2,
-		},
-	}
-
-	res, err := httpClient.Do(req)
+	res, err := client.Do(req)
 
 	if err != nil {
-		fmt.Printf("Unable to download %s\n", fileName)
+		fmt.Printf("Unable to download %v\n", err)
 		return
 	}
 
 	defer res.Body.Close()
 
-	filePath := filepath.Join(folderDir, fileName)
+	contentType := res.Header.Get("content-type")
+
+	filename := fmt.Sprintf("%d.%s", index, ct[contentType])
+
+	filePath := filepath.Join(folderDir, filename)
 	file, err := os.Create(filePath)
 
 	if err != nil {

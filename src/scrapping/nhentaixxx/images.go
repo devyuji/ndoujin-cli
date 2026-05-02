@@ -14,6 +14,7 @@ import (
 )
 
 type Call struct {
+	Client  *http.Client
 	Url     string
 	Headers map[string]string
 }
@@ -39,8 +40,7 @@ func (c *Call) GetImages() (types.Image, error) {
 		req.Header.Set(key, value)
 	}
 
-	httpClient := &http.Client{}
-	res, err := httpClient.Do(req)
+	res, err := c.Client.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
 		return images, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
@@ -69,7 +69,7 @@ func (c *Call) GetImages() (types.Image, error) {
 		limiter <- 1
 
 		wg.Go(func() {
-			image, err := c.getURL(httpClient, code, i+1)
+			image, err := c.getURL(code, i+1)
 
 			if err != nil {
 				fmt.Println("Unable to download image:", image.FileName)
