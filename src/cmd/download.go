@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/devyuji/ndoujin-cli/src/config"
+	"github.com/devyuji/ndoujin-cli/src/scrapping/doujins"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
 	"github.com/devyuji/ndoujin-cli/src/types"
@@ -27,6 +28,7 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
+	cmd.PersistentFlags().IntP("concurrency", "c", 10, "Set Concurrency download")
 
 	rootCmd.AddCommand(cmd)
 }
@@ -45,8 +47,19 @@ func codeCmd(c *cobra.Command, args []string) {
 	path, err := c.Flags().GetString("path")
 
 	if err != nil {
-		fmt.Println("Unable to get flag path")
+		fmt.Println("Unable to get path flag")
 		return
+	}
+
+	concurrency, err := c.Flags().GetInt("concurrency")
+
+	if err != nil {
+		fmt.Println("Unable to get concurrency flag")
+		return
+	}
+
+	if concurrency != config.Value.Concurrency {
+		config.Value.Concurrency = concurrency
 	}
 
 	if path == "" {
@@ -141,6 +154,16 @@ func start(uri string, path string) {
 		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
 
 		scrapper = &nhentaixxx.Call{
+			Url:     uri,
+			Headers: headers,
+		}
+
+	case "doujins.com":
+		folderName = "doujins-download-trial"
+
+		headers["Cookie"] = config.Value.Cookies.Doujins
+
+		scrapper = &doujins.Call{
 			Url:     uri,
 			Headers: headers,
 		}
