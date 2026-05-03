@@ -223,7 +223,7 @@ func start(uri string, path string) {
 	// ------------------ creating folder  ------------------------
 	downloadPath := filepath.Join(path, folderName)
 
-	_, err = os.Stat(folderName)
+	_, err = os.Stat(downloadPath)
 
 	if os.IsNotExist(err) {
 		err = os.Mkdir(downloadPath, 0755)
@@ -238,13 +238,13 @@ func start(uri string, path string) {
 	limiter := make(chan int, config.Value.Concurrency)
 	var wg sync.WaitGroup
 
-	fmt.Printf("Downloading %s\n", uri)
 	for i, detail := range images.Details {
 		limiter <- 1
 		wg.Add(1)
 
 		go func(index int) {
 
+			fmt.Printf("\r\033[KDownloading image %d/%d...", index, len(images.Details))
 			err = utils.DownloadImage(client, detail.Url, downloadPath, index, headers)
 
 			if err != nil {
@@ -262,7 +262,7 @@ func start(uri string, path string) {
 
 	wg.Wait()
 
-	fmt.Println("Download completed.")
+	fmt.Println("\nDownload completed.")
 }
 
 func saveFailedDownoad(data string, name string) {
@@ -302,11 +302,10 @@ func readFailedDownload(client *http.Client, name string, headers map[string]str
 		file.Close()
 		return false
 	}
-	// 2. Create a scanner
+
 	scanner := bufio.NewScanner(file)
 	var failedDownloads []string
 
-	// 3. Loop through the file line by line
 	// scanner.Scan() returns false when it hits the end of the file
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -329,7 +328,6 @@ func readFailedDownload(client *http.Client, name string, headers map[string]str
 
 	}
 
-	// 4. Always check for errors after the loop finishes
 	if err := scanner.Err(); err != nil {
 		fmt.Printf("Error scanning file: %v\n", err)
 		file.Close()
