@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"maps"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -119,11 +121,12 @@ func start(uri string, path string) {
 	fmt.Printf("Fetching images for %s...\n", uri)
 
 	var scrapper provider
+
 	client := &http.Client{
 		Transport: &http.Transport{
-			IdleConnTimeout: 30 * time.Second,
+			IdleConnTimeout: 60 * time.Second,
 		},
-		Timeout: 60 * time.Second,
+		Timeout: 5 * time.Minute,
 	}
 
 	switch hostName {
@@ -191,10 +194,15 @@ func start(uri string, path string) {
 			Body: b,
 		}
 
-		config.Value.Concurrency = 1
-
 	default:
 		fmt.Println("URL Not Supported.")
+		return
+	}
+
+	c := readFailedDownload(client, folderName, headers)
+
+	if c {
+		fmt.Println("Download Complete.")
 		return
 	}
 
@@ -233,15 +241,114 @@ func start(uri string, path string) {
 	fmt.Printf("Downloading %s\n", uri)
 	for i, detail := range images.Details {
 		limiter <- 1
+		wg.Add(1)
 
-		wg.Go(func() {
-			utils.DownloadImage(client, detail.Url, downloadPath, i+1, headers)
+		go func(index int) {
 
-			<-limiter
-		})
+			err = utils.DownloadImage(client, detail.Url, downloadPath, index, headers)
+
+			if err != nil {
+				fmt.Println(err)
+
+				d := fmt.Sprintf("%d;%s\n", index, detail.Url)
+				saveFailedDownoad(d, folderName)
+			}
+
+			defer wg.Done()
+			defer func() { <-limiter }()
+
+		}(i + 1)
 	}
 
 	wg.Wait()
 
 	fmt.Println("Download completed.")
+}
+
+func saveFailedDownoad(data string, name string) {
+
+	fileName := fmt.Sprintf("%s.ndoujin", name)
+
+	f := filepath.Join(config.Value.Path, fileName)
+
+	file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close()
+
+	// 4. Write the formatted string
+	_, err = file.WriteString(data)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+}
+
+func readFailedDownload(client *http.Client, name string, headers map[string]string) bool {
+	f := filepath.Join(config.Value.Path, fmt.Sprintf("%s.ndoujin", name))
+
+	_, err := os.Stat(f)
+
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	fmt.Println("Downloading Failed Images...")
+
+	file, err := os.Open(f)
+	if err != nil {
+		fmt.Printf("Failed to open file: %v\n", err)
+		file.Close()
+		return false
+	}
+	// 2. Create a scanner
+	scanner := bufio.NewScanner(file)
+	var failedDownloads []string
+
+	// 3. Loop through the file line by line
+	// scanner.Scan() returns false when it hits the end of the file
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if line == "" {
+			continue
+		}
+
+		s := strings.Split(line, ";")
+		fn, _ := strconv.Atoi(s[0])
+		u := s[1]
+
+		err := utils.DownloadImage(client, strings.TrimSpace(u), filepath.Join(config.Value.Path, name), fn, headers)
+
+		if err != nil {
+			fmt.Println(err)
+			failedDownloads = append(failedDownloads, fmt.Sprintf("%d;%s", fn, u))
+			file.Close()
+		}
+
+	}
+
+	// 4. Always check for errors after the loop finishes
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error scanning file: %v\n", err)
+		file.Close()
+		return false
+	}
+
+	file.Close()
+
+	if len(failedDownloads) < 1 {
+		err := os.Remove(f)
+
+		if err != nil {
+			fmt.Println("Unable to remove file ", err)
+		}
+	}
+
+	for _, i := range failedDownloads {
+		saveFailedDownoad(i, name)
+	}
+
+	return true
 }

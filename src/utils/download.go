@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-func DownloadImage(client *http.Client, url string, folderDir string, index int, headers map[string]string) {
+func DownloadImage(client *http.Client, url string, folderDir string, index int, headers map[string]string) error {
 
 	e := map[string]string{
 		"image/jpeg": "jpg",
@@ -19,8 +19,7 @@ func DownloadImage(client *http.Client, url string, folderDir string, index int,
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
 	if err != nil {
-		fmt.Println("Invalid URL")
-		return
+		return fmt.Errorf("Invalid URL\n")
 	}
 
 	for key, value := range headers {
@@ -30,15 +29,13 @@ func DownloadImage(client *http.Client, url string, folderDir string, index int,
 	res, err := client.Do(req)
 
 	if err != nil {
-		fmt.Printf("Unable to download %v\n", err)
-		return
+		return fmt.Errorf("Unable to download %v\n", err)
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		fmt.Printf("Unable to access url: %s - %d\n", url, res.StatusCode)
-		return
+		return fmt.Errorf("Unable to access url: %s - %d\n", url, res.StatusCode)
 	}
 
 	contentType := res.Header.Get("content-type")
@@ -49,29 +46,29 @@ func DownloadImage(client *http.Client, url string, folderDir string, index int,
 	file, err := os.Create(filePath)
 
 	if err != nil {
-		fmt.Println("Failed to create file:", err)
-		return
+		return fmt.Errorf("Failed to create file: %v\n", err)
+
 	}
 
 	_, err = io.Copy(file, res.Body)
 
 	if err != nil {
-		fmt.Println("Failed to save image:", err)
-
 		file.Close()
-		return
+		return fmt.Errorf("Failed to save image: %v\n", err)
 	}
 
 	if err = file.Sync(); err != nil {
-		fmt.Println("Failed to save image:", err)
-
 		file.Close()
-		return
+		return fmt.Errorf("Failed to save image: %v\n", err)
+
 	}
 
 	err = file.Close()
 
 	if err != nil {
-		fmt.Println("Failed to save image: ", err)
+		return fmt.Errorf("Failed to save image: %v\n", err)
+
 	}
+
+	return nil
 }
