@@ -42,11 +42,15 @@ func (c *Call) GetImages() (types.Image, error) {
 
 	res, err := c.Client.Do(req)
 
-	if err != nil || res.StatusCode != 200 {
-		return images, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
+	if err != nil {
+		return images, err
 	}
 
 	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return images, fmt.Errorf("Unable to access website : %s - %s", c.Url, res.Status)
+	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 
@@ -72,7 +76,7 @@ func (c *Call) GetImages() (types.Image, error) {
 			image, err := c.getURL(code, i+1)
 
 			if err != nil {
-				fmt.Println("Unable to download image:", image.FileName)
+				fmt.Println("Unable to download image: ", err)
 
 				<-limiter
 			}
@@ -88,64 +92,3 @@ func (c *Call) GetImages() (types.Image, error) {
 
 	return images, nil
 }
-
-// func getUrl(client *http.Client, code string, headers map[string]string, pageNumber int) (types.ImagesDetails, error) {
-// 	var imageDetails types.ImagesDetails
-
-// 	url := fmt.Sprintf("https://nhentai.xxx/g/%s/%d", code, pageNumber)
-
-// 	req, err := http.NewRequest(http.MethodGet, url, nil)
-
-// 	if err != nil {
-// 		return imageDetails, err
-// 	}
-
-// 	for key, value := range headers {
-// 		req.Header.Set(key, value)
-// 	}
-
-// 	res, err := client.Do(req)
-
-// 	if err != nil || res.StatusCode != 200 {
-// 		return imageDetails, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
-// 	}
-
-// 	defer res.Body.Close()
-
-// 	doc, err := goquery.NewDocumentFromReader(res.Body)
-
-// 	if err != nil {
-// 		return imageDetails, err
-// 	}
-
-// 	imageUrl, exisit := doc.Find("#fimg").Attr("data-src")
-
-// 	if !exisit {
-// 		return imageDetails, fmt.Errorf("Image not found")
-// 	}
-
-// 	imageDetails.FileName = getFileName(imageUrl)
-// 	imageDetails.Url = imageUrl
-
-// 	return imageDetails, nil
-// }
-
-// func getFileName(url string) string {
-// 	urlSplit := strings.Split(url, "/")
-// 	length := len(urlSplit)
-// 	fileName := urlSplit[length-1]
-
-// 	return fixFile(fileName)
-// }
-
-// func fixFile(input string) string {
-// 	parts := strings.Split(input, ".")
-
-// 	if len(parts) < 3 {
-// 		return input
-// 	}
-
-// 	filename := strings.Join(parts[:len(parts)-1], ".")
-
-// 	return filename
-// }

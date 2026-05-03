@@ -3,7 +3,6 @@ package nhentaixxx
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/devyuji/ndoujin-cli/src/types"
@@ -27,11 +26,15 @@ func (c *Call) getURL(code string, pageNumber int) (types.ImagesDetails, error) 
 
 	res, err := c.Client.Do(req)
 
-	if err != nil || res.StatusCode != 200 {
-		return imageDetails, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
+	if err != nil {
+		return imageDetails, err
 	}
 
 	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return imageDetails, fmt.Errorf("Unable to access website : %s - %d", c.Url, res.StatusCode)
+	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 
@@ -45,28 +48,7 @@ func (c *Call) getURL(code string, pageNumber int) (types.ImagesDetails, error) 
 		return imageDetails, fmt.Errorf("Image not found")
 	}
 
-	imageDetails.FileName = getFileName(imageUrl)
 	imageDetails.Url = imageUrl
 
 	return imageDetails, nil
-}
-
-func getFileName(url string) string {
-	urlSplit := strings.Split(url, "/")
-	length := len(urlSplit)
-	fileName := urlSplit[length-1]
-
-	return fixFile(fileName)
-}
-
-func fixFile(input string) string {
-	parts := strings.Split(input, ".")
-
-	if len(parts) < 3 {
-		return input
-	}
-
-	filename := strings.Join(parts[:len(parts)-1], ".")
-
-	return filename
 }

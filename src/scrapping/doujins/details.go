@@ -25,11 +25,15 @@ func GetDetails(client *http.Client, uri string, headers map[string]string) (map
 
 	res, err := client.Do(req)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
 		return details, nil, err
 	}
 
 	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return details, nil, fmt.Errorf("Unable to access website %s - %d", uri, res.StatusCode)
+	}
 
 	i, err := io.ReadAll(res.Body)
 

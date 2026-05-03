@@ -31,7 +31,6 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
-	// cmd.PersistentFlags().IntP("concurrency", "c", 10, "Set Concurrency download")
 
 	rootCmd.AddCommand(cmd)
 }
@@ -53,17 +52,6 @@ func codeCmd(c *cobra.Command, args []string) {
 		fmt.Println("Unable to get path flag")
 		return
 	}
-
-	// concurrency, err := c.Flags().GetInt("concurrency")
-
-	// if err != nil {
-	// 	fmt.Println("Unable to get concurrency flag")
-	// 	return
-	// }
-
-	// if concurrency != config.Value.Concurrency {
-	// 	config.Value.Concurrency = concurrency
-	// }
 
 	if path == "" {
 		path = config.Value.Path
@@ -132,7 +120,10 @@ func start(uri string, path string) {
 
 	var scrapper provider
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			IdleConnTimeout: 30 * time.Second,
+		},
+		Timeout: 60 * time.Second,
 	}
 
 	switch hostName {
@@ -163,6 +154,7 @@ func start(uri string, path string) {
 		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
 
 		scrapper = &nhentaixxx.Call{
+			Client:  client,
 			Url:     uri,
 			Headers: headers,
 		}

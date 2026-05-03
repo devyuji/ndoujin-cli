@@ -1,8 +1,7 @@
 package types
 
 type ImagesDetails struct {
-	Url      string
-	FileName string
+	Url string
 }
 
 type Image struct {

@@ -45,6 +45,10 @@ func (c *Call) GetImages() (types.Image, error) {
 
 	defer res.Body.Close()
 
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return images, fmt.Errorf("Unable to access website: %s - %d", c.Url, res.StatusCode)
+	}
+
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 
 	if err != nil {
@@ -73,8 +77,7 @@ func (c *Call) GetImages() (types.Image, error) {
 		i := fmt.Sprintf("%s/%s/%s", imageBaseUrl, id, fixFile(fileName))
 
 		images.Details = append(images.Details, types.ImagesDetails{
-			Url:      i,
-			FileName: fixFile(fileName),
+			Url: i,
 		})
 	}
 

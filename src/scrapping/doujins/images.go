@@ -2,7 +2,6 @@ package doujins
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -33,14 +32,11 @@ func (c *Call) GetImages() (types.Image, error) {
 			}
 
 			u := strings.TrimSpace(src)
-			fmt.Println(u)
 
 			images.Details = append(images.Details, types.ImagesDetails{
-				Url:      strings.TrimSpace(u),
-				FileName: fmt.Sprintf("%d.jpg", i),
+				Url: strings.TrimSpace(u),
 			})
 		})
-		fmt.Println(i)
 	})
 
 	return images, nil

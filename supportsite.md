@@ -2,3 +2,4 @@
 
 - nhentai.net
 - nhentai.xxx
+- doujins.com

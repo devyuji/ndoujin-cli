@@ -10,7 +10,7 @@ import (
 
 func DownloadImage(client *http.Client, url string, folderDir string, index int, headers map[string]string) {
 
-	ct := map[string]string{
+	e := map[string]string{
 		"image/jpeg": "jpg",
 		"image/webp": "webp",
 		"image/png":  "png",
@@ -36,9 +36,14 @@ func DownloadImage(client *http.Client, url string, folderDir string, index int,
 
 	defer res.Body.Close()
 
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		fmt.Printf("Unable to access url: %s - %d\n", url, res.StatusCode)
+		return
+	}
+
 	contentType := res.Header.Get("content-type")
 
-	filename := fmt.Sprintf("%d.%s", index, ct[contentType])
+	filename := fmt.Sprintf("%d.%s", index, e[contentType])
 
 	filePath := filepath.Join(folderDir, filename)
 	file, err := os.Create(filePath)
