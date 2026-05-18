@@ -7,3 +7,5 @@ type ImagesDetails struct {
 type Image struct {
 	Details []ImagesDetails
 }
+
+type Headers = map[string]string

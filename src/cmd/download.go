@@ -19,6 +19,7 @@ import (
 	"github.com/devyuji/ndoujin-cli/src/scrapping/myhentaigallery"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
+	"github.com/devyuji/ndoujin-cli/src/scrapping/wordpress"
 	"github.com/devyuji/ndoujin-cli/src/types"
 	"github.com/devyuji/ndoujin-cli/src/utils"
 	"github.com/spf13/cobra"
@@ -134,8 +135,6 @@ func start(c *cobra.Command, uri string) {
 		log.Fatal(err)
 	}
 
-	hostName = parseUrl.Host
-
 	fmt.Printf("Fetching images for %s...\n", uri)
 
 	var scrapper provider
@@ -146,6 +145,8 @@ func start(c *cobra.Command, uri string) {
 		},
 		Timeout: 5 * time.Minute,
 	}
+
+	hostName = parseUrl.Host
 
 	// ---------------------- Provider Config -------------------------
 	switch hostName {
@@ -194,7 +195,7 @@ func start(c *cobra.Command, uri string) {
 			Headers: headers,
 		}
 
-	case "myhentaigallery.com":
+	case "www.myhentaigallery.com", "myhentaigallery.com":
 
 		h := map[string]string{
 			"Origin": "https://cdn.myhentaicomics.com",
@@ -204,9 +205,17 @@ func start(c *cobra.Command, uri string) {
 
 		maps.Copy(headers, h)
 
-		folderName = "Heaven Or Hell - The Sweet Descent"
-
 		scrapper = &myhentaigallery.Call{
+			Client:  client,
+			Url:     uri,
+			Headers: headers,
+		}
+
+	case "hentaidoujinworld.com", "www.hentaidoujinworld.com":
+
+		headers["Cookie"] = config.Value.Cookies.Hentaidoujinworld
+
+		scrapper = &wordpress.Call{
 			Client:  client,
 			Url:     uri,
 			Headers: headers,

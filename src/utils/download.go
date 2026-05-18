@@ -4,9 +4,39 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+func getFileType(rawURL string) string {
+	// 1. Parse the URL to ignore the domain and query parameters (?word=hello)
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		fmt.Println("Invalid URL provided")
+		return ""
+	}
+
+	// parsedURL.Path is now "/s/fgs/1.jpeg/signature"
+
+	// 2. Split the path into individual segments
+	segments := strings.Split(parsedURL.Path, "/")
+
+	var fileType string
+
+	// 3. Loop through segments to find the last one with a file extension
+	for _, segment := range segments {
+		// If the segment has a dot, assume it's a file
+		if strings.Contains(segment, ".") {
+			// Split by the dot and grab the last part
+			parts := strings.Split(segment, ".")
+			fileType = parts[len(parts)-1]
+		}
+	}
+
+	return fileType
+}
 
 func DownloadImage(client *http.Client, url string, folderDir string, index int, headers map[string]string) error {
 
@@ -39,8 +69,13 @@ func DownloadImage(client *http.Client, url string, folderDir string, index int,
 	}
 
 	contentType := res.Header.Get("content-type")
+	extension := e[contentType]
 
-	filename := fmt.Sprintf("%d.%s", index, e[contentType])
+	if contentType == "" {
+		extension = getFileType(url)
+	}
+
+	filename := fmt.Sprintf("%d.%s", index, extension)
 
 	filePath := filepath.Join(folderDir, filename)
 	file, err := os.Create(filePath)

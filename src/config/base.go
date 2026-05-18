@@ -10,10 +10,11 @@ import (
 const VERSION string = "v1.1.1"
 
 type Cookie struct {
-	Nhentai         string `json:"nhentai.net"`
-	NhentaiXXX      string `json:"nhentai.xxx"`
-	Doujins         string `json:"doujins.com"`
-	MyHentaiGallery string `json:"myhentaicomics.com"`
+	Nhentai           string `json:"nhentai.net"`
+	NhentaiXXX        string `json:"nhentai.xxx"`
+	Doujins           string `json:"doujins.com"`
+	MyHentaiGallery   string `json:"myhentaicomics.com"`
+	Hentaidoujinworld string `json:"hentaidoujinworld.com"`
 }
 
 type Config struct {

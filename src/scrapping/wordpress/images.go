@@ -1,17 +1,18 @@
-package myhentaigallery
+package wordpress
 
 import (
 	"net/http"
-	"regexp"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/devyuji/ndoujin-cli/src/types"
+	"github.com/devyuji/ndoujin-cli/src/utils"
 )
 
 type Call struct {
 	Client  *http.Client
 	Url     string
-	Headers types.Headers
+	Headers map[string]string
 }
 
 func (c *Call) GetImages() (types.Image, string, error) {
@@ -42,20 +43,21 @@ func (c *Call) GetImages() (types.Image, string, error) {
 		return images, f, err
 	}
 
-	doc.Find(".comic-thumb").Each(func(i int, s *goquery.Selection) {
-		image, e := s.Find("img").Attr("src")
+	f = strings.TrimSpace(doc.Find("#chapter-heading").Text())
 
-		if !e {
+	doc.Find(".page-break").Each(func(i int, s *goquery.Selection) {
+		v, exists := s.Find("img").Attr("src")
+
+		if !exists {
 			return
 		}
 
-		re := regexp.MustCompile(`/thumbnail`)
-
-		newURL := re.ReplaceAllString(image, "/original")
-
-		images.Details = append(images.Details, types.ImagesDetails{Url: newURL})
+		images.Details = append(images.Details, types.ImagesDetails{
+			Url: strings.TrimSpace(v),
+		})
 	})
 
-	return images, f, nil
+	f = utils.SanitizeFilename(f)
 
+	return images, f, nil
 }
