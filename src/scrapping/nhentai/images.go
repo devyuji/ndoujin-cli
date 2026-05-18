@@ -16,7 +16,7 @@ type Call struct {
 	Headers map[string]string
 }
 
-func (c *Call) GetImages() (types.Image, error) {
+func (c *Call) GetImages() (types.Image, string, error) {
 	var images types.Image
 	code, err := GetCode(c.Url)
 
@@ -30,7 +30,7 @@ func (c *Call) GetImages() (types.Image, error) {
 
 	if err != nil {
 		fmt.Println(url)
-		return images, fmt.Errorf("Invalid URL")
+		return images, "", fmt.Errorf("Invalid URL")
 	}
 
 	for key, value := range c.Headers {
@@ -40,19 +40,19 @@ func (c *Call) GetImages() (types.Image, error) {
 	res, err := c.Client.Do(req)
 
 	if err != nil || res.StatusCode != 200 {
-		return images, fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
+		return images, "", fmt.Errorf("Unable to access website\nif the website is using cloudflare then add cookies in config.json file - %d", res.StatusCode)
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return images, fmt.Errorf("Unable to access website: %s - %d", c.Url, res.StatusCode)
+		return images, "", fmt.Errorf("Unable to access website: %s - %d", c.Url, res.StatusCode)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 
 	if err != nil {
-		return images, fmt.Errorf("Parse error")
+		return images, "", fmt.Errorf("Parse error")
 	}
 
 	var thumbImages []string
@@ -81,7 +81,7 @@ func (c *Call) GetImages() (types.Image, error) {
 		})
 	}
 
-	return images, nil
+	return images, code, nil
 }
 
 func fixFile(input string) string {

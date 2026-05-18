@@ -16,6 +16,7 @@ import (
 
 	"github.com/devyuji/ndoujin-cli/src/config"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/doujins"
+	"github.com/devyuji/ndoujin-cli/src/scrapping/myhentaigallery"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentai"
 	"github.com/devyuji/ndoujin-cli/src/scrapping/nhentaixxx"
 	"github.com/devyuji/ndoujin-cli/src/types"
@@ -31,10 +32,20 @@ var cmd = &cobra.Command{
 	Run:     codeCmd,
 }
 
+type provider interface {
+	GetImages() (types.Image, string, error)
+}
+
 func init() {
 	cmd.PersistentFlags().StringP("path", "p", "", "Set Download Path")
+	cmd.PersistentFlags().BoolP("fail", "f", false, "Download failed ones.")
 
 	rootCmd.AddCommand(cmd)
+}
+
+// n <- current t <- total
+func printDownloadStatus(n int, t int) {
+	fmt.Printf("\r\033[KDownloading image %d/%d...", n, t)
 }
 
 func isURL(s string) bool {
@@ -42,22 +53,7 @@ func isURL(s string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-type provider interface {
-	GetImages() (types.Image, error)
-}
-
 func codeCmd(c *cobra.Command, args []string) {
-
-	path, err := c.Flags().GetString("path")
-
-	if err != nil {
-		fmt.Println("Unable to get path flag")
-		return
-	}
-
-	if path == "" {
-		path = config.Value.Path
-	}
 
 	//---------------------- look for code.txt file if no url is present -----------------------
 	if len(args) < 1 {
@@ -81,9 +77,9 @@ func codeCmd(c *cobra.Command, args []string) {
 					log.Fatal(err)
 				}
 
-				c := string(buffer[:bytesRead])
-				for i := range strings.FieldsSeq(c) {
-					start(i, path)
+				s := string(buffer[:bytesRead])
+				for i := range strings.FieldsSeq(s) {
+					start(c, i)
 				}
 			}
 
@@ -91,20 +87,42 @@ func codeCmd(c *cobra.Command, args []string) {
 		}
 
 	}
-	//---------------------- look for code.txt file if no url is present -----------------------
+	//-------------------END: look for code.txt file if no url is present -----------------------
 
+	// URL Argument
 	u := args[0]
 
-	start(u, path)
+	start(c, u)
 }
 
-func start(uri string, path string) {
+func start(c *cobra.Command, uri string) {
 	var hostName string
 	var folderName string
 	var headers = map[string]string{
 		"User-Agent": config.Value.UserAgent,
 	}
 
+	// ------------------- Getting flags values -------------------------
+	path, err := c.Flags().GetString("path")
+
+	if err != nil {
+		fmt.Println("Error: Getting flags...")
+		return
+	}
+
+	fail, err := c.Flags().GetBool("fail")
+
+	if err != nil {
+		fmt.Println("Error: Getting flags...")
+		return
+	}
+	//-------------------- END: Getting flags values ----------------------
+
+	if path == "" {
+		path = config.Value.Path
+	}
+
+	// Checking if url is valid or not
 	if !isURL(uri) {
 		fmt.Println("Please Enter Valid URL.")
 		return
@@ -129,14 +147,9 @@ func start(uri string, path string) {
 		Timeout: 5 * time.Minute,
 	}
 
+	// ---------------------- Provider Config -------------------------
 	switch hostName {
 	case "nhentai.net":
-		folderName, err = nhentai.GetCode(uri)
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
 
 		headers["Cookie"] = config.Value.Cookies.Nhentai
 
@@ -147,12 +160,6 @@ func start(uri string, path string) {
 		}
 
 	case "nhentai.xxx":
-		folderName, err = nhentai.GetCode(uri)
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
 
 		headers["Cookie"] = config.Value.Cookies.NhentaiXXX
 
@@ -181,17 +188,28 @@ func start(uri string, path string) {
 
 		maps.Copy(headers, h)
 
-		d, b, err := doujins.GetDetails(client, uri, headers)
-
-		if err != nil {
-			fmt.Println("Unable to get details - ", err)
-			return
+		scrapper = &doujins.Call{
+			Client:  client,
+			Url:     uri,
+			Headers: headers,
 		}
 
-		folderName = d["name"].(string)
+	case "myhentaigallery.com":
 
-		scrapper = &doujins.Call{
-			Body: b,
+		h := map[string]string{
+			"Origin": "https://cdn.myhentaicomics.com",
+			"Host":   "cdn.myhentaicomics.com",
+			"Cookie": config.Value.Cookies.MyHentaiGallery,
+		}
+
+		maps.Copy(headers, h)
+
+		folderName = "Heaven Or Hell - The Sweet Descent"
+
+		scrapper = &myhentaigallery.Call{
+			Client:  client,
+			Url:     uri,
+			Headers: headers,
 		}
 
 	default:
@@ -199,26 +217,32 @@ func start(uri string, path string) {
 		return
 	}
 
-	c := readFailedDownload(client, folderName, headers)
-
-	if c {
-		fmt.Println("Download Complete.")
-		return
-	}
-
-	images, err := scrapper.GetImages()
+	// ------------- END: Provider Config ----------------------
+	images, folderName, err := scrapper.GetImages()
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if len(images.Details) < 1 {
+	if fail {
+		err = readFailedDownload(client, folderName, headers, images)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		return
+	}
+
+	totalImage := len(images.Details)
+
+	if totalImage < 1 {
 		fmt.Println("No images found. :-(")
 		return
 	}
 
-	fmt.Printf("Total images found: %d\n", len(images.Details))
+	fmt.Printf("Total images found: %d\n", totalImage)
 
 	// ------------------ creating folder  ------------------------
 	downloadPath := filepath.Join(path, folderName)
@@ -241,22 +265,22 @@ func start(uri string, path string) {
 	for i, detail := range images.Details {
 		limiter <- 1
 		wg.Add(1)
+		countFailed := 0
 
 		go func(index int) {
-
-			fmt.Printf("\r\033[KDownloading image %d/%d...", index, len(images.Details))
-			err = utils.DownloadImage(client, detail.Url, downloadPath, index, headers)
-
-			if err != nil {
-				fmt.Println(err)
-
-				d := fmt.Sprintf("%d;%s\n", index, detail.Url)
-				saveFailedDownoad(d, folderName)
-			}
-
 			defer wg.Done()
 			defer func() { <-limiter }()
 
+			printDownloadStatus(index, totalImage)
+			err = utils.DownloadImage(client, detail.Url, downloadPath, index, headers)
+
+			if err != nil {
+				fmt.Printf("\n%v", err)
+				countFailed++
+
+				d := fmt.Sprintf("%d\n", index)
+				saveFailedDownoad(d, folderName)
+			}
 		}(i + 1)
 	}
 
@@ -276,6 +300,7 @@ func saveFailedDownoad(data string, name string) {
 		fmt.Println("Error opening file:", err)
 		return
 	}
+
 	defer file.Close()
 
 	// 4. Write the formatted string
@@ -285,45 +310,63 @@ func saveFailedDownoad(data string, name string) {
 	}
 }
 
-func readFailedDownload(client *http.Client, name string, headers map[string]string) bool {
+func readFailedDownload(client *http.Client, name string, headers map[string]string, images types.Image) error {
 	f := filepath.Join(config.Value.Path, fmt.Sprintf("%s.ndoujin", name))
 
 	_, err := os.Stat(f)
 
 	if os.IsNotExist(err) {
-		return false
+		return err
 	}
-
-	fmt.Println("Downloading Failed Images...")
 
 	file, err := os.Open(f)
 	if err != nil {
 		fmt.Printf("Failed to open file: %v\n", err)
 		file.Close()
-		return false
+		return err
 	}
 
 	scanner := bufio.NewScanner(file)
 	var failedDownloads []string
+	totalRetry := 10
+	count := 1
+
+	fmt.Println("Downloading failed images...")
 
 	// scanner.Scan() returns false when it hits the end of the file
 	for scanner.Scan() {
+		retry := 1
 		line := scanner.Text()
 
 		if line == "" {
 			continue
 		}
 
-		s := strings.Split(line, ";")
-		fn, _ := strconv.Atoi(s[0])
-		u := s[1]
-
-		err := utils.DownloadImage(client, strings.TrimSpace(u), filepath.Join(config.Value.Path, name), fn, headers)
+		i, err := strconv.Atoi(line)
 
 		if err != nil {
 			fmt.Println(err)
-			failedDownloads = append(failedDownloads, fmt.Sprintf("%d;%s", fn, u))
-			file.Close()
+			continue
+		}
+
+		url := images.Details[i-1]
+
+		for retry < totalRetry {
+			printDownloadStatus(count, -1)
+			fmt.Println(" --Retry - ", retry)
+			err := utils.DownloadImage(client, url.Url, filepath.Join(config.Value.Path, name), i, headers)
+
+			if err != nil {
+				fmt.Printf("\n%v", err)
+				if retry == 1 {
+					failedDownloads = append(failedDownloads, fmt.Sprintf("%d\n", i))
+				}
+				retry++
+				continue
+			}
+
+			count++
+			break
 		}
 
 	}
@@ -331,22 +374,20 @@ func readFailedDownload(client *http.Client, name string, headers map[string]str
 	if err := scanner.Err(); err != nil {
 		fmt.Printf("Error scanning file: %v\n", err)
 		file.Close()
-		return false
+		return err
 	}
 
 	file.Close()
 
-	if len(failedDownloads) < 1 {
-		err := os.Remove(f)
+	err = os.Remove(f)
 
-		if err != nil {
-			fmt.Println("Unable to remove file ", err)
-		}
+	if err != nil {
+		fmt.Println("Unable to remove file ", err)
 	}
 
 	for _, i := range failedDownloads {
 		saveFailedDownoad(i, name)
 	}
 
-	return true
+	return nil
 }
