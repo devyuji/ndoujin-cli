@@ -211,9 +211,8 @@ func start(c *cobra.Command, uri string) {
 			Headers: headers,
 		}
 
-	case "hentaidoujinworld.com", "www.hentaidoujinworld.com":
-
-		headers["Cookie"] = config.Value.Cookies.Hentaidoujinworld
+	// Wordpress websites
+	case "hentaidoujinworld.com", "www.hentaidoujinworld.com", "porncomics18.com", "www.porncomics18.com":
 
 		scrapper = &wordpress.Call{
 			Client:  client,

@@ -46,10 +46,14 @@ func (c *Call) GetImages() (types.Image, string, error) {
 	f = strings.TrimSpace(doc.Find("#chapter-heading").Text())
 
 	doc.Find(".page-break").Each(func(i int, s *goquery.Selection) {
-		v, exists := s.Find("img").Attr("src")
+		img := s.Find("img")
+		v, exists := img.Attr("src")
 
 		if !exists {
-			return
+			v, exists = img.Attr("data-src")
+			if !exists {
+				return
+			}
 		}
 
 		images.Details = append(images.Details, types.ImagesDetails{

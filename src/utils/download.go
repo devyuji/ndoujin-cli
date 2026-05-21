@@ -18,8 +18,6 @@ func getFileType(rawURL string) string {
 		return ""
 	}
 
-	// parsedURL.Path is now "/s/fgs/1.jpeg/signature"
-
 	// 2. Split the path into individual segments
 	segments := strings.Split(parsedURL.Path, "/")
 

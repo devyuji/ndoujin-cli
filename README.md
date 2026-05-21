@@ -1,6 +1,6 @@
 # ndoujin-cli
 
-CLI tool to download doujins from [Supported](https://github.com/devyuji/ndoujin-cli/blob/main/supportsite.md) websites.
+CLI tool to download doujins from [Supported](https://github.com/devyuji/ndoujin-cli/blob/test/supportsite.md) websites.
 
 [Download](https://github.com/devyuji/ndoujin-cli/releases/latest)
 
